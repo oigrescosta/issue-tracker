@@ -8,7 +8,7 @@ import "easymde/dist/easymde.min.css";
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createIssueSchema } from '@/app/validationSchemas';
+import { issueSchema } from '@/app/validationSchemas';
 import { z } from 'zod';
 import ErrorMessage from '@/app/components/ErrorMessage';
 import Spinner from '@/app/components/Spinner';
@@ -19,16 +19,12 @@ const SimpleMDE = dynamic(
   { ssr: false }
 );
 
-type IssueForm = z.infer<typeof createIssueSchema>;
+type IssueFormData = z.infer<typeof issueSchema>;
 
-interface Props {
-  issue?: Issue
-}
-
-const IssueForm = ({issue}: Props) => {
+const IssueForm = ({issue}: {issue?: Issue}) => {
   const router = useRouter();
-  const {register, control, handleSubmit, formState: { errors }} = useForm<IssueForm>({
-    resolver: zodResolver(createIssueSchema)
+  const {register, control, handleSubmit, formState: { errors }} = useForm<IssueFormData>({
+    resolver: zodResolver(issueSchema)
   });
   const [error, setError] = useState('');
   const [isSubmiting, setSubmitting] = useState(false);
@@ -36,7 +32,11 @@ const IssueForm = ({issue}: Props) => {
   const onSubmit = handleSubmit(async (data) => {
     try {
       setSubmitting(true);
-      await axios.post('/api/issues', data);
+      if(issue) {
+        await axios.patch('/api/issues/' + issue.id, data);
+      } else {
+        await axios.post('/api/issues', data);
+      }
       router.push('/issues');
     } catch (error) {
       setSubmitting(false);
@@ -68,7 +68,10 @@ const IssueForm = ({issue}: Props) => {
             )}
           />
           <ErrorMessage>{errors.description?.message}</ErrorMessage>
-          <Button disabled={isSubmiting}>Submit New Issue {isSubmiting && <Spinner /> }</Button>
+          <Button disabled={isSubmiting}>
+            { issue ? 'Update Issue' : 'Submit New Issue' }{' '}
+            {isSubmiting && <Spinner /> }
+          </Button>
       </form>
     </div>
   )
